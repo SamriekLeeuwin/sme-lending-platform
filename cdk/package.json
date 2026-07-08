@@ -1,18 +1,22 @@
 {
-  "name": "sme-lending-platform",
+  "name": "sme-lending-platform-cdk",
   "version": "1.0.0",
   "private": true,
   "type": "commonjs",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "clean": "rm -rf dist"
+    "cdk": "cdk",
+    "synth": "cdk synth"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
-    "esbuild": "^0.28.1",
+    "aws-cdk": "^2.230.0",
+    "esbuild": "^0.27.2",
+    "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
   },
   "dependencies": {
-    "@aws-sdk/client-eventbridge": "^3.1081.0"
+    "aws-cdk-lib": "^2.230.0",
+    "constructs": "^10.4.3"
   }
 }

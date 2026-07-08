@@ -10,7 +10,8 @@ import {
 } from './submit-application.types';
 import { validateSubmitApplicationInput } from './validate-submit-application';
 
-const eventBridgeClient = new EventBridgeClient({ region: 'us-east-1' });
+const eventBridgeClient = new EventBridgeClient({});
+const eventBusName = process.env.EVENT_BUS_NAME ?? 'sme-lending-event-bus';
 
 export const handler = async (event: { body?: string }) => {
     const input: SubmitApplicationInput = event.body
@@ -36,7 +37,7 @@ export const handler = async (event: { body?: string }) => {
     const command = new PutEventsCommand({
         Entries: [
             {
-                EventBusName: 'sme-lending-event-bus',
+                EventBusName: eventBusName,
                 Source: 'sme-lending.submit-application',
                 DetailType: 'LoanApplicationSubmitted',
                 Detail: JSON.stringify(application),
