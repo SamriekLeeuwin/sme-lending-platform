@@ -15,3 +15,8 @@ export interface SubmitApplicationData extends SubmitApplicationInput {
   createdAt: string;
   status: string;
 }
+
+export interface ValidationResult<TError extends string = string> {
+  isValid: boolean;
+  errors: TError[];
+}
