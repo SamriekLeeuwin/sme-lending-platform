@@ -1,39 +1,89 @@
-import { SubmitApplicationInput } from './submit-application.types';
+import {
+  SUBMIT_APPLICATION_ERRORS,
+  SubmitApplicationValidationError,
+} from './submit-application.errors';
+import {
+  SubmitApplicationInput,
+  ValidationResult,
+} from './submit-application.types';
 
-export function validateSubmitApplicationInput(input: SubmitApplicationInput) {
-  const errors: string[] = [];
+function isMissingText(value: unknown) {
+  return typeof value !== 'string' || value.trim().length === 0;
+}
+
+function isNumber(value: unknown): value is number {
+  return typeof value === 'number' && !Number.isNaN(value);
+}
+
+function requireText(
+  value: unknown,
+  error: SubmitApplicationValidationError,
+  errors: SubmitApplicationValidationError[],
+) {
+  if (isMissingText(value)) {
+    errors.push(error);
+  }
+}
+
+function requirePositiveNumber(
+  value: unknown,
+  error: SubmitApplicationValidationError,
+  errors: SubmitApplicationValidationError[],
+) {
+  if (!isNumber(value) || value <= 0) {
+    errors.push(error);
+  }
+}
+
+export function validateSubmitApplicationInput(
+  input: SubmitApplicationInput,
+): ValidationResult<SubmitApplicationValidationError> {
+  const errors: SubmitApplicationValidationError[] = [];
 
   if (!input) {
-    errors.push('input is required');
+    errors.push(SUBMIT_APPLICATION_ERRORS.inputRequired);
     return { isValid: false, errors };
   }
 
-  if (!input.applicantName) errors.push('applicantName is required');
-  if (!input.companyName) errors.push('companyName is required');
-  if (!input.email) errors.push('email is required');
-  if (!input.loanPurpose) errors.push('loanPurpose is required');
-  if (!input.phoneNumber) errors.push('phoneNumber is required');
+  requireText(
+    input.applicantName,
+    SUBMIT_APPLICATION_ERRORS.applicantNameRequired,
+    errors,
+  );
+  requireText(
+    input.companyName,
+    SUBMIT_APPLICATION_ERRORS.companyNameRequired,
+    errors,
+  );
+  requireText(input.email, SUBMIT_APPLICATION_ERRORS.emailRequired, errors);
+  requireText(
+    input.loanPurpose,
+    SUBMIT_APPLICATION_ERRORS.loanPurposeRequired,
+    errors,
+  );
+  requireText(
+    input.phoneNumber,
+    SUBMIT_APPLICATION_ERRORS.phoneNumberRequired,
+    errors,
+  );
 
-  if (typeof input.existingDebt !== 'number' || input.existingDebt < 0) {
-    errors.push('existingDebt must be a non-negative number');
+  if (!isNumber(input.existingDebt) || input.existingDebt < 0) {
+    errors.push(SUBMIT_APPLICATION_ERRORS.existingDebtInvalid);
   }
 
-  if (typeof input.loanAmount !== 'number' || input.loanAmount <= 0) {
-    errors.push('loanAmount must be a positive number');
-  }
+  requirePositiveNumber(
+    input.loanAmount,
+    SUBMIT_APPLICATION_ERRORS.loanAmountInvalid,
+    errors,
+  );
+  requirePositiveNumber(
+    input.loanTermMonths,
+    SUBMIT_APPLICATION_ERRORS.loanTermMonthsInvalid,
+    errors,
+  );
 
-  if (
-    typeof input.loanTermMonths !== 'number' ||
-    input.loanTermMonths <= 0
-  ) {
-    errors.push('loanTermMonths must be a positive number');
-  }
-
-  if (
-    typeof input.monthlyCashflow !== 'number' ||
-    Number.isNaN(input.monthlyCashflow)
-  ) {
-    errors.push('monthlyCashflow must be a number');
+  if (!isNumber(input.monthlyCashflow)) {
+    errors.push(SUBMIT_APPLICATION_ERRORS.monthlyCashflowInvalid);
   }
 
   return {
