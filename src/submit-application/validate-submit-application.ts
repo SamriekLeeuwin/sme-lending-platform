@@ -46,7 +46,7 @@ export function validateSubmitApplicationInput(
   }
 
   requireText(
-    input.applicantName,
+    input.applicantName,d
     SUBMIT_APPLICATION_ERRORS.applicantNameRequired,
     errors,
   );
