@@ -52,6 +52,9 @@ export function validateSubmitCredits(
     errors.push(CREDIT_SCORING_ERRORS.loanTermMonthsInvalid);
   }
 
+  // TODO: Denk na over de businessregels voor credit scoring.
+  // Welke waarden zijn acceptabel, en wanneer is een aanvraag echt risicovol?
+  // TODO: Voeg tests toe voor een geldige aanvraag en voor verschillende ongeldige inputs.
   return {
     isValid: errors.length === 0,
     errors,
