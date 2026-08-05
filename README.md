@@ -2,215 +2,554 @@
 
 [![Status](https://img.shields.io/badge/status-in%20development-yellow)](https://github.com/leeuwis/sme-lending-platform)
 [![AWS](https://img.shields.io/badge/AWS-serverless-orange)](https://aws.amazon.com)
-[![Node](https://img.shields.io/badge/Node-20-green)](https://nodejs.org)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue)](https://typescriptlang.org)
+[![Node.js](https://img.shields.io/badge/Node.js-20-green)](https://nodejs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue)](https://www.typescriptlang.org)
 [![React](https://img.shields.io/badge/React-18-blue)](https://react.dev)
 
-> Cloud-native fintech platform for small business loan processing.  
-> Built from scratch with AWS serverless, event-driven microservices, and modern architecture patterns.  
-> Learning project — documenting the journey from zero to production over 30 days.
+A serverless lending platform for small and medium-sized businesses, built with AWS, TypeScript, and React.
+
+The project covers the complete loan application flow, from application submission and credit scoring to automated decision-making and status tracking.
+
+> **Status:** Work in progress. The architecture and core services are being built incrementally.
 
 ---
 
-## What It Does
+## Overview
 
-A platform where SME (Small & Medium Enterprise) business owners can:
+The platform is designed around an event-driven architecture.
 
-1. **Submit a loan application** — Amount, term, purpose, company details
-2. **Get an instant credit score** — Based on financial health metrics (revenue, debt, cashflow)
-3. **Receive an automated decision** — Approved, rejected, or flagged for manual review
-4. **Track application status** — Real-time dashboard showing the full lifecycle
+A business owner submits a loan application through the frontend. The application is stored immediately, after which background services process the application independently.
 
-### The Loan Application Lifecycle
+The current flow is:
 
+```text
+Client
+  │
+  ▼
+API Gateway
+  │
+  ▼
+Submit Application Lambda
+  │
+  ├── Store application
+  │
+  └── Publish event
+          │
+          ▼
+      EventBridge
+          │
+          ├───────────────┬─────────────────┐
+          ▼               ▼                 ▼
+   Credit Scoring       KYC            Notification
+      Lambda           (mock)             Lambda
+          │
+          ▼
+   Decision Engine
+          │
+          ▼
+    Application Status
 ```
-[Applicant submits form]
-         │
-         ▼
-[Application Stored] ←── Synchronous (immediate feedback)
-         │
-         ▼
-[Credit Score Calculated] ←── Asynchronous (background processing)
-         │
-         ▼
-[Decision Engine Evaluates] ←── Asynchronous (automated rules)
-         │
-         ▼
-[Notification Sent] ←── Asynchronous (email/SMS to applicant)
+
+The goal is to keep the individual responsibilities small and independent. Adding or changing one processing step should not require rewriting the entire application flow.
+
+---
+
+## Features
+
+### Loan applications
+
+Applicants can submit:
+
+* Company information
+* Requested loan amount
+* Loan term
+* Loan purpose
+* Financial information
+
+Each application receives a unique `applicationId`.
+
+### Credit scoring
+
+The credit scoring service calculates a score from `0-100` based on financial metrics such as:
+
+* Revenue
+* Existing debt
+* Cash flow
+* Requested loan amount
+* Loan term
+
+The scoring logic is intentionally kept separate from the API and decision logic.
+
+### Automated decisions
+
+The decision engine evaluates the application and scoring result against predefined business rules.
+
+Possible outcomes:
+
+```text
+APPROVED
+REJECTED
+MANUAL_REVIEW
 ```
+
+Keeping the decision rules separate makes it possible to change the approval criteria without changing the rest of the application pipeline.
+
+### Asynchronous processing
+
+The application submission itself is synchronous so the client receives an immediate response.
+
+Longer-running processing happens asynchronously through events.
+
+This allows individual services to fail or retry without blocking the original API request.
 
 ---
 
 ## Architecture
 
-Built on AWS with serverless services:
+The platform uses AWS managed services instead of long-running servers.
 
-```
-┌─────────────────┐     ┌──────────────┐     ┌─────────────────┐
-│   React App     │────▶│ API Gateway  │────▶│  Lambda: Submit │
-│  (Applicant UI) │     │   (REST API) │     │   Application   │
-└─────────────────┘     └──────────────┘     └────────┬────────┘
-                                                      │
-                                            ┌─────────▼─────────┐
-                                            │  EventBridge      │
-                                            │  (Event Bus)      │
-                                            └─────────┬─────────┘
-                                                      │
-                              ┌───────────────────────┼───────────────────────┐
-                              │                       │                       │
-                    ┌─────────▼─────────┐   ┌───────▼───────┐   ┌─────────────▼──────────┐
-                    │ Lambda: Credit    │   │ Lambda: KYC   │   │ Lambda: Notification   │
-                    │   Scoring         │   │  (mock)       │   │  (Audit + Alerts)      │
-                    │                   │   │               │   │                        │
-                    │ • Risk algorithm  │   │ • ID verify   │   │ • Structured logging   │
-                    │ • Score 0-100     │   │ • Doc check   │   │ • Status updates       │
-                    └─────────┬─────────┘   └───────────────┘   └────────────────────────┘
-                              │
-                    ┌─────────▼─────────┐
-                    │  Lambda: Decision │
-                    │     Engine        │
-                    │                   │
-                    │ • Business rules  │
-                    │ • Approve/Reject  │
-                    └───────────────────┘
+### Request flow
+
+```text
+React
+  │
+  ▼
+API Gateway
+  │
+  ▼
+Lambda
+  │
+  ├── DynamoDB
+  │
+  └── EventBridge
+          │
+          ├── Credit Scoring
+          ├── KYC
+          ├── Decision Engine
+          └── Notifications
 ```
 
-### Data Layer
+### AWS services
 
-| Table | Purpose | Key Design |
-|-------|---------|------------|
-| `loan-applications` | Store all applications | PK: `applicationId`, SK: `createdAt` |
-| `credit-scores` | Store scoring results | PK: `applicationId` |
-| `idempotency-keys` | Prevent duplicate events | PK: `eventId`, TTL: 24h |
-
----
-
-## Tech Stack
-
-| Layer | Technology | Why |
-|-------|-----------|-----|
-| **Cloud** | AWS | Market leader, mature serverless, free tier |
-| **Compute** | Lambda (Node.js 20) | Serverless, fast cold starts, JSON-native |
-| **Events** | EventBridge + SQS (DLQ) | Routing, decoupled, retry on failure |
-| **Database** | DynamoDB | Serverless, single-digit ms latency, auto-scale |
-| **API** | API Gateway (REST) | Lambda integration, pay-per-request, throttling |
-| **Frontend** | React + TypeScript + Vite | Popular, type-safe, fast build |
-| **Hosting** | S3 + CloudFront | CDN, serverless, managed by CDK |
-| **IaC** | AWS CDK (TypeScript) | Type-safe, testable, high-level constructs |
-| **Observability** | CloudWatch Logs + X-Ray | Structured logs, distributed tracing |
-| **Security** | IAM roles + API keys | Least privilege, basic protection |
+| Service     | Responsibility                        |
+| ----------- | ------------------------------------- |
+| API Gateway | Public REST API                       |
+| Lambda      | Application and business logic        |
+| EventBridge | Event routing between services        |
+| SQS         | Retry handling and dead-letter queues |
+| DynamoDB    | Application and scoring data          |
+| S3          | Frontend hosting                      |
+| CloudFront  | CDN for the frontend                  |
+| CloudWatch  | Logs and monitoring                   |
+| X-Ray       | Distributed tracing                   |
+| IAM         | Access control                        |
+| CDK         | Infrastructure as Code                |
 
 ---
 
-## Progress
+## Data Model
 
-| Day | Topic | Status | Key Learnings |
-|-----|-------|--------|---------------|
-| 1 | AWS Lambda Hello World | ✅ | Serverless execution model, CloudWatch logs |
-| 2 | Serverless cost analysis | ✅ | Pay-per-use vs always-on, break-even points |
-| 3 | DynamoDB table design + GSI | 🔄 | PK/SK design, Query vs Scan, indexing |
-| 4 | EventBridge event bus | ⏳ | Event routing, async communication |
-| 5 | API Gateway REST API | ⏳ | REST design, CORS, throttling |
-| 6 | Credit scoring Lambda | ⏳ | Business logic in Lambda, risk algorithms |
-| 7 | Decision engine | ⏳ | Rule-based decisions, separation of concerns |
-| 8 | Notification service | ⏳ | Audit logging, event-driven alerts |
-| 9 | Dashboard API | ⏳ | Read patterns, GSI usage |
-| 10 | Frontend React app | ⏳ | Forms, state management, API calls |
-| 11 | CDK infrastructure | ⏳ | Infrastructure as Code, automated deploy |
-| 12 | End-to-end testing | ⏳ | Integration testing, edge cases |
-| 13-20 | Polish & features | ⏳ | Auth, idempotency, caching |
-| 21-30 | Production ready | ⏳ | Monitoring, alerts, documentation |
+The initial data model uses separate DynamoDB tables for different concerns.
 
----
+| Table               | Purpose                      | Primary Key     |
+| ------------------- | ---------------------------- | --------------- |
+| `loan-applications` | Loan applications and status | `applicationId` |
+| `credit-scores`     | Credit scoring results       | `applicationId` |
+| `idempotency-keys`  | Duplicate event protection   | `eventId`       |
 
-## What I Learned
+### Example application
 
-### Architecture Decisions
-- **Serverless vs Servers:** Lambda is event-driven and pay-per-use. EC2 is always-on and requires management. For variable fintech traffic, serverless wins.
-- **Event-Driven Architecture:** Services communicate via events, not direct calls. If one service fails, the others keep working. This is resilience.
-- **Synchronous vs Asynchronous:** User-facing actions are synchronous (immediate feedback). Background processing is asynchronous (user doesn't wait).
-- **Database Design:** DynamoDB requires upfront query pattern design. No JOINs means denormalization. GSIs are essential for efficient filtering.
-
-### Technical Skills
-- AWS Lambda execution model and cold starts
-- DynamoDB PK/SK design and Global Secondary Indexes
-- EventBridge event routing and retry behavior
-- Structured logging with JSON for observability
-- Git atomic commits and professional documentation
-
-### Fintech Domain
-- Credit scoring factors: debt-to-revenue, cashflow, loan-to-revenue, term
-- Risk levels and their impact on approval decisions
-- Regulatory requirements: audit trails, data residency, idempotency
-
----
-
-## How to Run
-
-> **Note:** This project is in active development. Full deployment instructions will be added as the project progresses.
-
-### Prerequisites
-- AWS Account (Free Tier)
-- Node.js 20+
-- AWS CLI configured (`aws configure`)
-- AWS CDK installed (`npm install -g aws-cdk`)
-
-### Quick Start (Coming Soon)
-```bash
-git clone https://github.com/leeuwis/sme-lending-platform.git
-cd sme-lending-platform/cdk
-npm install
-npm run build
-npm run bootstrap
-npm run deploy
+```json
+{
+  "applicationId": "app_01J...",
+  "companyName": "Example BV",
+  "requestedAmount": 50000,
+  "termMonths": 36,
+  "purpose": "Working capital",
+  "status": "UNDER_REVIEW",
+  "createdAt": "2026-08-05T10:00:00Z"
+}
 ```
+
+The exact schema is expected to evolve as more query patterns are introduced.
 
 ---
 
 ## Project Structure
 
-```
+```text
 sme-lending-platform/
-├── cdk/                  # Infrastructure as Code (AWS CDK)
-│   ├── bin/              # Entry point
-│   ├── lib/              # Stack and constructs
+│
+├── cdk/
+│   ├── bin/
+│   │   └── app.ts
+│   ├── lib/
+│   │   └── ...
 │   └── package.json
-├── src/                  # Lambda business logic
+│
+├── src/
 │   ├── submit-application/
+│   │   └── handler.ts
+│   │
 │   ├── credit-scoring/
+│   │   └── handler.ts
+│   │
 │   ├── decision-engine/
+│   │   └── handler.ts
+│   │
 │   ├── notification/
+│   │   └── handler.ts
+│   │
 │   └── dashboard-api/
-├── frontend/             # React + TypeScript
+│       └── handler.ts
+│
+├── frontend/
 │   ├── src/
 │   └── package.json
-├── shared/               # Common types and interfaces
+│
+├── shared/
+│   ├── types/
+│   └── ...
+│
+├── package.json
 └── README.md
 ```
 
----
-
-## Next Steps
-
-- [ ] Implement idempotency keys for duplicate event handling
-- [ ] Add JWT authentication for applicant sessions
-- [ ] Build internal admin dashboard for risk team
-- [ ] Add Step Functions for complex manual review workflows
-- [ ] Implement caching with ElastiCache for dashboard queries
-- [ ] Load testing with Artillery/k6 to find Lambda limits
-- [ ] Add CI/CD pipeline with GitHub Actions
+The intention is to keep infrastructure, business logic, frontend code, and shared types separate.
 
 ---
 
-## Why This Project?
+## Technology Choices
 
-Modern fintech platforms process thousands of loan applications daily. Understanding how to build such systems — serverless, event-driven, scalable — is essential for any software engineer entering the fintech space.
+### AWS Lambda
 
-This project is my hands-on exploration of:
-- **Cloud architecture** at scale
-- **Event-driven systems** and their resilience
-- **Fintech domain logic** (credit scoring, risk assessment)
-- **Professional development practices** (Git, documentation, testing)
+Lambda is used for the backend services because most operations are event-driven and do not require continuously running servers.
+
+Each Lambda has a relatively narrow responsibility.
+
+### EventBridge
+
+EventBridge is used to publish domain events and decouple services.
+
+For example:
+
+```text
+LoanApplicationSubmitted
+        │
+        ├── Credit Scoring
+        ├── KYC
+        └── Notification
+```
+
+Consumers can be added without changing the service that publishes the event.
+
+### SQS
+
+SQS is used where additional buffering and retry handling is required.
+
+Failed messages can be moved to a dead-letter queue instead of being lost.
+
+### DynamoDB
+
+DynamoDB is used for application data because the platform has predictable access patterns and does not require relational joins for its primary workflows.
+
+Indexes are added based on actual query requirements rather than treating DynamoDB like a relational database.
+
+### AWS CDK
+
+All AWS infrastructure is defined using TypeScript and AWS CDK.
+
+This keeps infrastructure changes version-controlled alongside the application code.
 
 ---
 
+## Getting Started
+
+### Prerequisites
+
+Make sure the following are installed:
+
+* Node.js 20+
+* npm
+* AWS CLI
+* AWS CDK
+* An AWS account
+
+Configure the AWS CLI:
+
+```bash
+aws configure
+```
+
+Verify the configuration:
+
+```bash
+aws sts get-caller-identity
+```
+
+### Install dependencies
+
+Clone the repository:
+
+```bash
+git clone https://github.com/leeuwis/sme-lending-platform.git
+cd sme-lending-platform
+```
+
+Install the infrastructure dependencies:
+
+```bash
+cd cdk
+npm install
+```
+
+Build the project:
+
+```bash
+npm run build
+```
+
+### CDK bootstrap
+
+If this is the first CDK deployment in your AWS account/region:
+
+```bash
+npx cdk bootstrap
+```
+
+### Deploy
+
+```bash
+npx cdk deploy
+```
+
+The deployment will provision the required AWS resources defined in the CDK stack.
+
+> Deployment instructions are still evolving while the infrastructure is being implemented.
+
+---
+
+## Development
+
+### Run tests
+
+```bash
+npm test
+```
+
+### Build
+
+```bash
+npm run build
+```
+
+### Synthesize CloudFormation
+
+To inspect the infrastructure generated by CDK:
+
+```bash
+npx cdk synth
+```
+
+### Review infrastructure changes
+
+Before deploying changes:
+
+```bash
+npx cdk diff
+```
+
+This is useful for checking what AWS resources will be added, modified, or removed.
+
+---
+
+## Event Flow
+
+The main domain event currently looks like:
+
+```json
+{
+  "source": "sme-lending",
+  "detail-type": "LoanApplicationSubmitted",
+  "detail": {
+    "applicationId": "app_01J..."
+  }
+}
+```
+
+The event does not contain the complete application payload. Consumers can use the `applicationId` to retrieve the required data.
+
+This keeps events small and avoids coupling consumers to the full application schema.
+
+---
+
+## Error Handling
+
+The system is designed to treat failures as part of the normal event-processing flow.
+
+For asynchronous processing:
+
+```text
+EventBridge
+    │
+    ▼
+SQS
+    │
+    ▼
+Lambda
+    │
+    ├── Success
+    │
+    └── Failure
+          │
+          ▼
+        Retry
+          │
+          ▼
+      Dead Letter Queue
+```
+
+Idempotency is also being added to prevent the same event from producing duplicate side effects.
+
+---
+
+## Observability
+
+Application logs use structured JSON rather than plain text.
+
+Example:
+
+```json
+{
+  "level": "INFO",
+  "event": "loan_application_submitted",
+  "applicationId": "app_01J...",
+  "timestamp": "2026-08-05T10:00:00Z"
+}
+```
+
+This makes logs easier to search and filter in CloudWatch.
+
+Planned observability includes:
+
+* Structured application logs
+* Lambda metrics
+* API metrics
+* Error alarms
+* Distributed tracing
+* Dead-letter queue monitoring
+
+---
+
+## Security
+
+Security is handled primarily through AWS IAM and API-level controls.
+
+Current and planned controls include:
+
+* IAM roles with least-privilege permissions
+* No hard-coded AWS credentials
+* API throttling
+* Input validation
+* Idempotency protection
+* Audit logging
+* Secure storage of application data
+
+Authentication and authorization for applicant sessions are planned for a later stage.
+
+> This project is a technical demonstration and is **not intended for processing real customer or financial data**.
+
+---
+
+## Roadmap
+
+### Core platform
+
+* [x] Initial AWS CDK project
+* [x] Lambda proof of concept
+* [x] Initial DynamoDB design
+* [ ] EventBridge event bus
+* [ ] Loan application API
+* [ ] Credit scoring service
+* [ ] Decision engine
+* [ ] Notification service
+* [ ] Dashboard API
+* [ ] React frontend
+
+### Reliability
+
+* [ ] Idempotency
+* [ ] SQS dead-letter queues
+* [ ] Retry policies
+* [ ] Integration tests
+* [ ] Load testing
+* [ ] Failure scenarios
+
+### Security
+
+* [ ] Authentication
+* [ ] Authorization
+* [ ] Request validation
+* [ ] Secrets management
+* [ ] Audit trail
+
+### Infrastructure
+
+* [ ] Complete CDK deployment
+* [ ] CI/CD with GitHub Actions
+* [ ] Environment separation
+* [ ] Monitoring and alarms
+
+---
+
+## Architecture Decisions
+
+Some of the main decisions in the project are documented here rather than hidden inside the implementation.
+
+### Why serverless?
+
+The workload is primarily request- and event-driven. Lambda removes the need to manage servers while allowing individual services to scale independently.
+
+### Why events?
+
+Loan processing consists of several independent steps. Events allow those steps to be developed and operated independently.
+
+### Why DynamoDB?
+
+The main workflows have well-defined access patterns and do not require complex relational queries. DynamoDB also integrates naturally with the serverless AWS architecture.
+
+### Why CDK?
+
+The infrastructure is part of the application and should therefore be version-controlled, reviewable, and reproducible.
+
+---
+
+## Current Status
+
+This project is actively being developed.
+
+The focus is currently on building the backend architecture first and then connecting the React frontend to the API.
+
+The repository will evolve as more services, tests, infrastructure, and operational tooling are added.
+
+---
+
+## Contributing
+
+This is currently a personal development project, but the repository is structured so that individual services can be worked on independently.
+
+If you want to experiment with the project:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add or update tests
+5. Open a pull request
+
+Keep infrastructure changes and application changes isolated where possible.
+
+---
+
+## License
+
+License information will be added as the project moves toward a public release.
