@@ -7,7 +7,6 @@ import type { CreditScoringInput } from "./credit-scoring.types";
 export function validateSubmitCredits(
   input: CreditScoringInput,
 ): ValidationResult<CreditScoringValidationError> {
-  // Hierin verzamel je de fouten die je vindt.
   const errors: CreditScoringValidationError[] = [];
 
   if (!input) {
