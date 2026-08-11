@@ -14,7 +14,7 @@ export interface SubmitApplicationData extends SubmitApplicationInput {
   applicationId: string;
   createdAt: string;
   // TODO: status later misschien typen met vaste waardes ipv string
-  status: string;
+  status: "SUBMITTED" | "APPROVED" | " REJECTED";
 }
 
 export interface ValidationResult<TError extends string = string> {
