@@ -25,6 +25,7 @@ function toCreditScoringInput(
 function calculateCreditScore(input: CreditScoringInput): CreditScoreResult {
   const reasons: string[] = [];
 
+  // TODO: score regels nog even checken met opdracht, vooral de grenzen en weging
   const monthlyDebtService = input.loanAmount / input.loanTermMonths;
   const dscr = input.monthlyCashflow / monthlyDebtService;
 
@@ -136,6 +137,7 @@ function calculateCreditScore(input: CreditScoringInput): CreditScoreResult {
 }
 
 export const handler = async (event: LoanApplicationSubmittedEvent) => {
+  // TODO: event.detail nog valideren, anders crasht dit als event verkeerd binnenkomt
   const application = event.detail;
   const input = toCreditScoringInput(application);
 
@@ -149,6 +151,7 @@ export const handler = async (event: LoanApplicationSubmittedEvent) => {
 
   const result = calculateCreditScore(input);
 
+  // TODO: score nog ergens opslaan of doorsturen, anders blijft hij alleen in deze response
   return {
     statusCode: 200,
     body: JSON.stringify(result),

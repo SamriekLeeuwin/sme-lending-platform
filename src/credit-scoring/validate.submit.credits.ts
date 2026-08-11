@@ -44,6 +44,8 @@ export function validateSubmitCredits(
     errors.push(CREDIT_SCORING_ERRORS.monthlyCashflowInvalid);
   }
 
+  // TODO: checken of monthlyCashflow ook groter dan 0 moet zijn
+
   if (
     typeof input.loanTermMonths !== "number" ||
     Number.isNaN(input.loanTermMonths) ||

@@ -17,12 +17,19 @@ const eventBridgeClient = new EventBridgeClient({});
 const eventBusName = process.env.EVENT_BUS_NAME ?? "sme-lending-event-bus";
 
 export const handler = async (event: { body?: string }) => {
-  // TODO: Voeg hier extra foutafhandeling toe voor een ongeldige JSON-body.
-  // Denk na over wat er moet gebeuren als er geen body aanwezig is of als de body geen geldig object is.
+  if (!event.body) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ errors: ["body is required"] }),
+    };
+  }
+
+  // TODO: nog fixen: als body geen goede JSON is moet hij gewoon 400 teruggeven
   const input: SubmitApplicationInput = event.body
     ? JSON.parse(event.body)
     : event.body;
 
+  // TODO: nog checken of input wel echt een object is en niet bijv string/null/array
   const validation = validateSubmitApplicationInput(input);
 
   if (!validation.isValid) {
@@ -39,7 +46,7 @@ export const handler = async (event: { body?: string }) => {
     status: "SUBMITTED",
   };
 
-  // TODO: Bepaal later of je de aangemaakte aanvraag ook wilt bewaren in een database.
+  // TODO: aanvraag nog opslaan in DynamoDB, nu wordt alleen het event verstuurd
   const command = new PutEventsCommand({
     Entries: [
       {

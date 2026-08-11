@@ -82,8 +82,7 @@ export function validateSubmitApplicationInput(
     errors,
   );
 
-  // TODO: Voeg hier extra businessregels toe.
-  // Denk bijvoorbeeld aan: maximum leningbedrag, minimale maandelijkse cashflow of een geldig e-mailformaat.
+  // TODO: later nog echte business regels toevoegen zoals email format en max leenbedrag
   if (!isNumber(input.monthlyCashflow)) {
     errors.push(SUBMIT_APPLICATION_ERRORS.monthlyCashflowInvalid);
   }

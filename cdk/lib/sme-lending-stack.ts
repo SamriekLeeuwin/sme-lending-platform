@@ -16,6 +16,7 @@ export class SmeLendingStack extends Stack {
       'sme-lending-event-bus',
     );
 
+    // TODO: event bus naam later uit config halen ipv hardcoded
     const submitApplicationFunction = new NodejsFunction(
       this,
       'SubmitApplicationFunction',
@@ -42,6 +43,8 @@ export class SmeLendingStack extends Stack {
     );
 
     eventBus.grantPutEventsTo(submitApplicationFunction);
+
+    // TODO: credit-scoring lambda nog koppelen aan dit event
 
     new cdk.CfnOutput(this, 'SubmitApplicationFunctionName', {
       value: submitApplicationFunction.functionName,
