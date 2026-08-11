@@ -9,6 +9,7 @@ export function validateSubmitCredits(
 ): ValidationResult<CreditScoringValidationError> {
   const errors: CreditScoringValidationError[] = [];
 
+  // TODO: idempotency toevoegen voordat deze handler echte side effects krijgt
   if (!input) {
     errors.push(CREDIT_SCORING_ERRORS.inputRequired);
     return { isValid: false, errors };
@@ -45,6 +46,7 @@ export function validateSubmitCredits(
   }
 
   // TODO: checken of monthlyCashflow ook groter dan 0 moet zijn
+  // TODO: negatieve cashflow misschien apart behandelen, niet hetzelfde als 0
 
   if (
     typeof input.loanTermMonths !== "number" ||

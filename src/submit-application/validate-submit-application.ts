@@ -40,6 +40,7 @@ export function validateSubmitApplicationInput(
 ): ValidationResult<SubmitApplicationValidationError> {
   const errors: SubmitApplicationValidationError[] = [];
 
+  // TODO: later misschien zod/json schema gebruiken zodat request validatie niet overal handmatig is
   if (!input) {
     errors.push(SUBMIT_APPLICATION_ERRORS.inputRequired);
     return { isValid: false, errors };
@@ -83,6 +84,7 @@ export function validateSubmitApplicationInput(
   );
 
   // TODO: later nog echte business regels toevoegen zoals email format en max leenbedrag
+  // TODO: ook checken welke velden privacy/AVG gevoelig zijn en niet in logs/events mogen
   if (!isNumber(input.monthlyCashflow)) {
     errors.push(SUBMIT_APPLICATION_ERRORS.monthlyCashflowInvalid);
   }

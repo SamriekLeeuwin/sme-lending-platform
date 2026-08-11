@@ -11,6 +11,7 @@ import {
 
 import { validateSubmitApplicationInput } from "./validate-submit-application";
 
+// TODO: regio niet hardcoden, Lambda krijgt AWS_REGION al van AWS
 const client = new DynamoDBClient({ region: "us-east-1" });
 const eventBridgeClient = new EventBridgeClient({});
 
@@ -41,12 +42,14 @@ export const handler = async (event: { body?: string }) => {
 
   const application: SubmitApplicationData = {
     ...input,
+    // TODO: misschien ULID/UUIDv7 gebruiken ipv randomUUID, dan is sorteren op tijd makkelijker
     applicationId: globalThis.crypto.randomUUID(),
     createdAt: new Date().toISOString(),
     status: "SUBMITTED",
   };
 
   // TODO: aanvraag nog opslaan in DynamoDB, nu wordt alleen het event verstuurd
+  // TODO: eerst outbox patroon kiezen, anders krijg ik straks opslag + event als losse writes
   const command = new PutEventsCommand({
     Entries: [
       {
@@ -54,8 +57,11 @@ export const handler = async (event: { body?: string }) => {
 
         Source: "sme-lending.submit-application",
 
+        // TODO: event type versie geven, bijv LoanApplicationSubmitted.v1
+
         DetailType: "LoanApplicationSubmitted",
 
+        // TODO: event kleiner maken, eigenlijk alleen applicationId + schemaVersion meesturen
         Detail: JSON.stringify(application),
       },
     ],

@@ -7,6 +7,7 @@ import {
 import { validateSubmitCredits } from "./validate.submit.credits";
 
 type LoanApplicationSubmittedEvent = {
+  // TODO: event detail moet later kleiner worden, liefst alleen applicationId ophalen uit tabel
   detail: SubmitApplicationData;
 };
 
@@ -26,6 +27,7 @@ function calculateCreditScore(input: CreditScoringInput): CreditScoreResult {
   const reasons: string[] = [];
 
   // TODO: score regels nog even checken met opdracht, vooral de grenzen en weging
+  // TODO: bug fixen: deelscores tellen nu waarschijnlijk dubbel mee door die weging erna
   const monthlyDebtService = input.loanAmount / input.loanTermMonths;
   const dscr = input.monthlyCashflow / monthlyDebtService;
 
@@ -103,6 +105,7 @@ function calculateCreditScore(input: CreditScoringInput): CreditScoreResult {
   reasons.push(`Cashflow margin score: ${cashflowMarginScore}/20`);
 
   let businessHistoryScore = 0;
+  // TODO: dit is eigenlijk geen business history maar loanTermMonths, hiervoor oprichtingsdatum nodig
   if (input.loanTermMonths >= 60) {
     businessHistoryScore = 10;
   } else if (input.loanTermMonths >= 36) {
@@ -138,6 +141,7 @@ function calculateCreditScore(input: CreditScoringInput): CreditScoreResult {
 
 export const handler = async (event: LoanApplicationSubmittedEvent) => {
   // TODO: event.detail nog valideren, anders crasht dit als event verkeerd binnenkomt
+  // TODO: bij EventBridge fouten throwen ipv statusCode teruggeven, anders ziet AWS het als gelukt
   const application = event.detail;
   const input = toCreditScoringInput(application);
 
@@ -152,6 +156,7 @@ export const handler = async (event: LoanApplicationSubmittedEvent) => {
   const result = calculateCreditScore(input);
 
   // TODO: score nog ergens opslaan of doorsturen, anders blijft hij alleen in deze response
+  // TODO: rulesetVersion bewaren bij score zodat later duidelijk is met welke regels hij is berekend
   return {
     statusCode: 200,
     body: JSON.stringify(result),

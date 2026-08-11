@@ -1,4 +1,5 @@
 export const SUBMIT_APPLICATION_ERRORS = {
+  // TODO: error codes misschien scheiden van tekst, frontend kan dan zelf vertalen
   inputRequired: 'input is required',
   applicantNameRequired: 'applicantName is required',
   companyNameRequired: 'companyName is required',

@@ -1,5 +1,6 @@
 export interface CreditScoringInput {
   applicationId: string;
+  // TODO: bedragen later ook hier in centen gebruiken net als bij submit input
   existingDebt: number;
   loanAmount: number;
   monthlyCashflow: number;
@@ -12,6 +13,7 @@ export interface CreditScoreResult {
   score: number;
   riskLevel: RiskLevel;
   calculatedAt: string;
+  // TODO: rulesetVersion toevoegen voor audit/uitleg achteraf
   reasons: string[];
 }
 
